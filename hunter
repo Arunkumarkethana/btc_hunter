@@ -1,0 +1,68 @@
+#!/bin/bash
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${BLUE}=======================================${NC}"
+echo -e "${BLUE}          BTC HUNTER LAUNCHER          ${NC}"
+echo -e "${BLUE}=======================================${NC}"
+
+# --- 1. AUTO-INSTALL DEPENDENCIES ---
+# Only need to do this once, but checking is fast.
+
+if ! command -v cargo &> /dev/null; then
+    echo -e "${GREEN}[+] Setting up Environment (First Run)...${NC}"
+    
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if [ -f /etc/debian_version ]; then
+            sudo apt update -y > /dev/null 2>&1
+            sudo apt install -y build-essential libssl-dev pkg-config git curl > /dev/null 2>&1
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        if ! command -v brew &> /dev/null; then
+             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        fi
+        brew install openssl pkg-config > /dev/null 2>&1
+    fi
+
+    # Install Rust
+    echo -e "${GREEN}[+] Installing Rust...${NC}"
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y > /dev/null 2>&1
+    source "$HOME/.cargo/env"
+fi
+
+# Ensure cargo is in path
+if [ -f "$HOME/.cargo/env" ]; then
+    source "$HOME/.cargo/env"
+fi
+
+# --- 2. UPDATE & RUN ---
+echo -e "${GREEN}[+] Checking for Updates...${NC}"
+git pull origin main > /dev/null 2>&1
+
+# --- 3. UTXO DATABASE CHECK ---
+UTXO_FILE="utxo_data/funded_addresses_full.txt"
+if [ ! -f "$UTXO_FILE" ]; then
+    echo -e "${BLUE}---------------------------------------${NC}"
+    echo -e "${BLUE}🚀 SPEED BOOST AVAILABLE!${NC}"
+    echo -e "UTXO Database not found. Downloading it increases speed"
+    echo -e "from ${RED}2.5 keys/s${NC} to ${GREEN}1,800,000 keys/s${NC}."
+    echo -e ""
+    read -p "Download 2.2GB database now? (~8 mins) [Y/n] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${GREEN}[+] Installing Python dependencies...${NC}"
+        pip3 install -r requirements.txt > /dev/null 2>&1
+        echo -e "${GREEN}[+] Downloading UTXO database...${NC}"
+        python3 utxo_manager.py download
+    else
+        echo -e "${BLUE}[i] Skipping download. Running in basic mode.${NC}"
+    fi
+fi
+
+echo -e "${BLUE}[+] STARTING THE HUNT...${NC}"
+echo -e "${BLUE}---------------------------------------${NC}"
+
+# Run with release optimizations
+cargo run --release

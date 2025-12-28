@@ -1,0 +1,7 @@
+/target
+credentials.json
+token.json
+utxo_data/
+__pycache__/
+*.log
+telegram.json
